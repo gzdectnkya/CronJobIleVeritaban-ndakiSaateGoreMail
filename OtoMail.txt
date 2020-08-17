@@ -1,0 +1,337 @@
+using ClosedXML.Excel;
+using Microsoft.VisualBasic;
+using Quartz;
+using Quartz.Impl;
+using System;
+using System.Data;
+using System.Data.SqlClient;
+using System.IO;
+using System.Net;
+using System.Net.Mail;
+using System.Threading.Tasks;
+
+namespace ConsoleApp3
+{
+    class Program
+    {
+        public static SqlConnection baglanti = new SqlConnection("Data Source=.\\SQLEXPRESS;Initial Catalog=Sparksx;Integrated Security=True");
+
+        static void Main(string[] args)
+        {
+            InitializeJobsAsync();
+            Console.ReadLine();
+        }
+
+        private static DataTable getdata()
+        {
+            using (SqlConnection con = new SqlConnection("Data Source =.\\SQLEXPRESS; Initial Catalog = Sparksx; Integrated Security = True"))
+            {
+                using (SqlCommand com = new SqlCommand("Select * from vw_MailReport"))
+                {
+                    using (SqlDataAdapter da = new SqlDataAdapter())
+                    {
+                        com.Connection = con;
+                        da.SelectCommand = com;
+
+                        using (DataTable dt = new DataTable())
+                        {
+
+                            da.Fill(dt);
+                            return dt;
+                        }
+                    }
+                }
+            }
+        }
+
+        private static DataTable getdata2(int MailReportId)
+        {
+            using (SqlConnection con = new SqlConnection("Data Source=.\\SQLEXPRESS;Initial Catalog=Sparksx;Integrated Security=True"))
+            {
+                using (SqlCommand com = new SqlCommand("Select * from vw_MailReportUser where MailReportId=@MailReportId"))
+                {
+                    com.Parameters.AddWithValue("@MailReportId", MailReportId);
+                    using (SqlDataAdapter da = new SqlDataAdapter())
+                    {
+                        com.Connection = con;
+                        da.SelectCommand = com;
+                        using (DataTable dt = new DataTable())
+                        {
+                            da.Fill(dt);
+                            return dt;
+                        }
+                    }
+                }
+            }
+        }
+
+        private static DataTable getdata3()
+        {
+            using (SqlConnection con = new SqlConnection("Data Source=.\\SQLEXPRESS;Initial Catalog=Sparksx;Integrated Security=True"))
+            {
+                using (SqlCommand com = new SqlCommand("select * from  vw_MailReportUser where control='0'"))
+                {
+                    using (SqlDataAdapter da = new SqlDataAdapter())
+                    {
+                        com.Connection = con;
+                        da.SelectCommand = com;
+                        using (DataTable dt = new DataTable())
+                        {
+                            da.Fill(dt);
+                            return dt;
+                        }
+                    }
+                }
+            }
+        }
+
+        private static DataTable getdata4()
+        {
+            using (SqlConnection con = new SqlConnection("Data Source=.\\SQLEXPRESS;Initial Catalog=Sparksx;Integrated Security=True"))
+            {
+                using (SqlCommand com = new SqlCommand("select * from SentMail"))
+                {
+                    using (SqlDataAdapter da = new SqlDataAdapter())
+                    {
+                        com.Connection = con;
+                        da.SelectCommand = com;
+                        using (DataTable dt = new DataTable())
+                        {
+                            da.Fill(dt);
+                            return dt;
+                        }
+                    }
+                }
+            }
+        }
+        private static DataTable getdata5(int MailReportId)
+        {
+
+            using (SqlConnection con = new SqlConnection("Data Source=.\\SQLEXPRESS;Initial Catalog=Sparksx;Integrated Security=True"))
+            {
+                using (SqlCommand com = new SqlCommand("UPDATE vw_MailReportUser SET control='1' where control='0' and  MailReportId=@MailReportId"))
+                {
+                    com.Parameters.AddWithValue("@MailReportId", MailReportId);
+                    using (SqlDataAdapter da = new SqlDataAdapter())
+                    {
+                        com.Connection = con;
+                        da.SelectCommand = com;
+                        using (DataTable dt = new DataTable())
+                        {
+                            da.Fill(dt);
+                            return dt;
+                        }
+                    }
+                }
+            }
+        }
+        public static void UpdateControl()
+        {
+            if (DateTime.Now.ToShortTimeString()== "00:00")
+            {
+                baglanti.Open();
+                SqlCommand com = new SqlCommand("UPDATE vw_MailReportUser SET control = 0", baglanti);
+                com.ExecuteNonQuery();
+                baglanti.Close();
+            }
+        }
+
+        public static void kosul()
+        {
+            DataTable vw_MailReportUser = getdata3();
+
+            foreach (DataRow mailru1 in vw_MailReportUser.Rows)
+            {
+                DataTable dtable2 = getdata2(Convert.ToInt32(mailru1["MailReportId"].ToString()));
+                foreach (DataRow mailru in dtable2.Rows)
+                {
+                    if (Convert.ToInt32(mailru["control"]) == 0)
+                    {
+
+                        if (Convert.ToInt32(mailru["PeriodTypeId"]) == 1)
+                        {
+                            string saatlik = DateTime.Now.Hour.ToString();
+                            if (saatlik == mailru["PeriodValue"].ToString())
+                            {
+                                SendMail(mailru["PeriodValue"].ToString(), Convert.ToInt32(mailru["control"].ToString()), mailru["PeriodDay"].ToString());
+                                Console.WriteLine("YEs!");
+                            }
+                        }
+
+                        if (Convert.ToInt32(mailru["PeriodTypeId"]) == 2)
+                        {
+                            string haftalikgun = DateTime.Now.DayOfWeek.ToString();
+                            string haftasaati = DateTime.Now.Hour.ToString();
+                            switch (haftalikgun)
+                            {
+
+                                case "Monday":
+                                    haftalikgun = "1";
+                                    break;
+                                case "Tuesday":
+                                    haftalikgun = "2";
+                                    break;
+                                case "Wednesday":
+                                    haftalikgun = "3";
+                                    break;
+                                case "Thursday":
+                                    haftalikgun = "4";
+                                    break;
+                                case "Friday":
+                                    haftalikgun = "5";
+                                    break;
+                                case "Saturday":
+                                    haftalikgun = "6";
+                                    break;
+                                case "Sunday":
+                                    haftalikgun = "7";
+                                    break;
+                            }
+                            if (haftalikgun == mailru["PeriodDay"].ToString())
+                            {
+                                if (haftasaati == mailru["PeriodValue"].ToString())
+                                {
+                                    SendMail(mailru["PeriodValue"].ToString(), Convert.ToInt32(mailru["control"].ToString()), mailru["PeriodDay"].ToString());
+                                    Console.WriteLine("Yey2!");
+                                }
+                            }
+                        }
+
+                        if (Convert.ToInt32(mailru["PeriodTypeId"]) == 3)
+                        {
+                            string aylik = DateTime.Now.Day.ToString();
+                            string ayliksaati = DateTime.Now.Hour.ToString();
+
+                            if (aylik == mailru["PeriodDay"].ToString())
+                            {
+                                if (ayliksaati == mailru["PeriodValue"].ToString())
+                                {
+                                    SendMail(mailru["PeriodValue"].ToString(), Convert.ToInt32(mailru["control"].ToString()), mailru["PeriodDay"].ToString());
+                                }
+                            }
+                        }
+                        if (Convert.ToInt32(mailru["PeriodTypeId"]) == 4)
+                        {
+                            string ayliktercih = DateTime.Now.Day.ToString();
+                            string atsaati = DateTime.Now.Hour.ToString();
+
+                            if (ayliktercih == mailru["PeriodDay"].ToString())
+                            {
+                                if (atsaati == mailru["PeriodValue"].ToString())
+                                {
+                                    SendMail(mailru["PeriodValue"].ToString(), Convert.ToInt32(mailru["control"].ToString()),mailru["PeriodDay"].ToString());
+                                }
+                            }
+                        }
+
+                    }
+                    else
+                    {
+                        Console.WriteLine("gönderilecek veri yok");
+                    }
+
+                }
+            }
+        }
+
+        private static void SendMail(string saat, int control,string gun)
+        {
+            DataTable excel = getdata();
+            DataTable vw_MailReportUser = getdata3();
+            //DataTable db_SentMail = getdata4();
+
+            foreach (DataRow mailru1 in vw_MailReportUser.Rows)
+            {
+                DataTable dtable2 = getdata2(Convert.ToInt32(mailru1["MailReportId"].ToString()));
+
+                foreach (DataRow mailru in dtable2.Rows)
+                {
+                    if (saat == mailru["PeriodValue"].ToString() && control == 0 || gun == mailru["PeriodDay"].ToString() && control == 0)
+                    {
+                        using (XLWorkbook wb = new XLWorkbook())
+                        {
+                            excel.TableName = "aa";
+                            wb.Worksheets.Add(excel);
+
+                            using (MemoryStream memoryStream = new MemoryStream())
+                            {
+                                wb.SaveAs(memoryStream);
+
+                                byte[] bytes = memoryStream.ToArray();
+                                memoryStream.Close();
+
+                                MailMessage mail = new MailMessage();
+
+                                mail.From = new MailAddress("asistan@dscience.tech");
+                                mail.Subject = mailru["Subject"].ToString();
+                                mail.Body = mailru["BodyTemplate"].ToString();
+                                mail.Attachments.Add(new Attachment(new MemoryStream(bytes), "IntacDate.xlsx"));//oluşacak ve gönderliecek dosya
+                                mail.IsBodyHtml = true;
+                                mail.To.Add(mailru["EmailAddress"].ToString());
+
+                                SmtpClient smtp = new SmtpClient();
+                                smtp.Host = "smtp.office365.com";
+                                smtp.EnableSsl = true;
+                                System.Net.NetworkCredential networkCredential = new NetworkCredential();
+                                networkCredential.UserName = "asistan@dscience.tech"; //gönderen
+                                networkCredential.Password = "Destek@!";//gönderen şifre
+                                smtp.UseDefaultCredentials = true;
+                                smtp.Credentials = networkCredential;
+                                smtp.Port = 587;
+                                smtp.Send(mail);//gönder
+                                getdata5(Convert.ToInt32(mailru["MailReportId"]));
+
+
+                            }
+                        }
+
+                        baglanti.Open();
+                        string id = mailru["MailReportId"].ToString();
+                        string subject1 = mailru["Subject"].ToString();
+                        string body1 = mailru["BodyTemplate"].ToString();
+                        string mailadres = mailru["EmailAddress"].ToString();
+                        DateTime tarihsaat = DateTime.Now;
+                        string format = "yyyy-MM-dd HH:mm:ss";
+                        SqlCommand komut = new SqlCommand("INSERT INTO SentMail (MailReportId,Subject,Body,EmailAddress,SentDate)Values ('" + id + "','" + subject1 + "','" + body1 + "','" + mailadres + "','" + tarihsaat.ToString(format) + "')", baglanti);
+                        komut.ExecuteNonQuery();
+                        baglanti.Close();
+
+                    }
+                }
+            }
+        }
+
+
+        public class SendUserEmailsJob : IJob
+        {
+            public Task Execute(IJobExecutionContext context)
+            {
+                kosul();
+                Console.WriteLine("Merhaba Dünya");
+                UpdateControl();
+                return Task.CompletedTask;
+
+
+            }
+        }
+        public static async Task InitializeJobsAsync()
+        {
+
+            var _scheduler = await new StdSchedulerFactory().GetScheduler();
+            await _scheduler.Start();
+
+            var userEmailsJob = JobBuilder.Create<SendUserEmailsJob>()
+                .WithIdentity("SendUserEmailsJob")
+                .Build();
+            var userEmailsTrigger = TriggerBuilder.Create()
+                .WithIdentity("SendUserEmailsCron")
+                .StartNow()
+                .WithCronSchedule("0 * * ? * *")
+                .Build();
+
+            var result = await _scheduler.ScheduleJob(userEmailsJob, userEmailsTrigger);
+
+        }
+
+    }
+}
